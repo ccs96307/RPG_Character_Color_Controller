@@ -17,6 +17,7 @@ class MainWindow(QMainWindow):
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
         self.initialArrowIcon()
+        self.setFixedSize(self.size())
 
         # Add pLabel & delete old QLabel
         self.label_image_original = dLabel(self.ui.centralwidget, self)
@@ -54,7 +55,6 @@ class MainWindow(QMainWindow):
         image_data = list(image.getdata())
 
         newRGBA = (self.newR, self.newG, self.newB, self.rgba[3])
-        print(newRGBA)
         for index in self.changePos:
             image_data[index] = newRGBA
 
@@ -127,11 +127,27 @@ class MainWindow(QMainWindow):
         file_name, _ = QFileDialog.getOpenFileName(self, "Open Image", QDir.homePath())
 
         if file_name.split('.')[-1] in ['png', 'jpg', 'jpeg']:
-            self.label_image_original.setPixmap(QPixmap(file_name))
-            self.label_image_original.setScaledContents(True)
-            self.ui.label_image_output.setPixmap(QPixmap(file_name))
-            self.ui.label_image_output.setScaledContents(True)
+            image = Image.open(file_name)
+            image = image.resize((self.ui.label_image_output.size().width(), self.ui.label_image_output.size().height()))
+
+            if image.mode == "RGB":
+                r, g, b = image.split()
+                image = Image.merge("RGB", (b, g, r))
+            elif image.mode == "RGBA":
+                r, g, b, a = image.split()
+                image = Image.merge("RGBA", (b, g, r, a))
+            elif image.mode == "L":
+                image = image.convert("RGBA")
+
+            image2 = image.convert("RGBA")
+            data = image2.tobytes("raw", "RGBA")
+            qim = QImage(data, image.size[0], image.size[1], QImage.Format_ARGB32)
+            pixmap = QPixmap.fromImage(qim)
+
+            self.label_image_original.setPixmap(QPixmap(pixmap))
+            self.ui.label_image_output.setPixmap(QPixmap(pixmap))
             self.label_image_original.switch = 1
+
 
     def initialArrowIcon(self):
         # Load byte data

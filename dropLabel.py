@@ -2,6 +2,7 @@
 import re
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
+from PIL import Image
 
 
 class dLabel(QLabel):
@@ -21,10 +22,25 @@ class dLabel(QLabel):
     def dropEvent(self, event):
         file_path = event.mimeData().text()
         file_path = re.sub('file:///', '', file_path)
-        self.setPixmap(QPixmap(file_path))
-        self.setScaledContents(True)
-        self.mainWindow.ui.label_image_output.setPixmap(QPixmap(file_path))
-        self.mainWindow.ui.label_image_output.setScaledContents(True)
+        image = Image.open(file_path)
+        image = image.resize((self.size().width(), self.size().height()))
+
+        if image.mode == "RGB":
+            r, g, b = image.split()
+            image = Image.merge("RGB", (b, g, r))
+        elif image.mode == "RGBA":
+            r, g, b, a = image.split()
+            image = Image.merge("RGBA", (b, g, r, a))
+        elif image.mode == "L":
+            image = image.convert("RGBA")
+
+        image2 = image.convert("RGBA")
+        data = image2.tobytes("raw", "RGBA")
+        qim = QImage(data, image.size[0], image.size[1], QImage.Format_ARGB32)
+        pixmap = QPixmap.fromImage(qim)
+
+        self.setPixmap(QPixmap(pixmap))
+        self.mainWindow.ui.label_image_output.setPixmap(QPixmap(pixmap))
         self.switch = 1
 
     def mousePressEvent(self, event):
